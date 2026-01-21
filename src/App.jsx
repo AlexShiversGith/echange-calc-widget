@@ -37,22 +37,58 @@ import "./index.css";
 */
 
 //https://api.frankfurter.app/latest?amount=100&from=EUR&to=USD
-const API_URL = "https://api.frankfurter.app/";
+const API_URL = "https://api.frankfurter.app";
 
 function App() {
   
-  const [data, setData] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [currencies, setCurrencies] = useState('')
+  const [loaded, setLoaded] = useState(Boolean)
+  const [from, setFrom] = useState('USD')
+  const [to, setTo] = useState('EUR')
+  const [amount, setAmount] = useState(0)
+  const [message, setMessage] = useState('Enter amount')
+  const [errMessage, setErrMessage] = useState('')
   
-  const getData = async (API_URL) => {
+  const getCurrencies = async (API_URL) => {
+    setLoaded(false)
     try {
-      const res = await fetch(API_URL)
+      const res = await fetch(`${API_URL}/currencies`)
       const data = await res.json()
-      setData(data)
+      const dataKeys = Object.keys(data)
+      setCurrencies(dataKeys)
     } catch (error) {
-      console.log(error)
+      setErrMessage(error)
+    } finally {
+      setLoaded(true)
     }
   } 
+
+  const converting = async () => {
+    if (from == to) {
+      setMessage('Choose a currency')
+      return
+    } else if (amount <= 0) {
+      setMessage('Enter valid amount')
+      return
+    }
+
+    try {
+      setLoaded(false)
+      setMessage('Converting...')
+      const res = await fetch(`${API_URL}/latest?amount=${amount}&from=${from}&to=${to}`)
+      const data = await res.json()
+      setLoaded(true)
+      setMessage(`${amount} ${from} = ${data.rates[to]} ${to}`)
+    } catch (error) {
+      setErrMessage(error)
+    } finally {
+      setLoaded(true)
+    }
+  }
+
+  useEffect(() => {
+    getCurrencies(API_URL)
+  }, [])
 
   return (
     <div className="app">
@@ -62,17 +98,33 @@ function App() {
         <p className="error"></p>
 
         <div className="input-group">
-          <input type="number" placeholder="Amount" className="input-field" />
-          <select className="dropdown">
-            <option></option>
+          <input 
+            type="number" 
+            placeholder="Amount" 
+            className="input-field" 
+            onChange={e => setAmount(e.target.value)}  
+          />
+          <select 
+            className="dropdown" 
+            value={from}
+            onChange={e => setFrom(e.target.value)}  
+          >
+           {loaded && currencies.map((item, id) => <option key={id} value={item}>{item}</option>)}
           </select>
           <span className="arrow">→</span>
-          <select className="dropdown">
-            <option></option>
+          <select 
+            className="dropdown" 
+            value={to}
+            onChange={e => setTo(e.target.value)}  
+          >
+            {loaded && currencies.map((item, id) => <option key={id} value={item}>{item}</option>)}
           </select>
         </div>
-        <button className="convert-button">Convert</button>
-        <p className="loading">Converting...</p>
+        <button 
+          className="convert-button"
+          onClick={e => converting()}
+        >Convert</button>
+        <p className="loading">{message}</p>
 
         <p className="result"></p>
       </div>
